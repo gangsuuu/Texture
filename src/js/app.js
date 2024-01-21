@@ -1,25 +1,36 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { VertexNormalsHelper } from 'three/examples/jsm/helpers/VertexNormalsHelper.js';
-import vertexShader from '../shaders/earth/vertex.glsl?raw';
-import fragmentShader from '../shaders/earth/fragment.glsl?raw';
-import pointsVertexShader from '../shaders/earthPoints/vertex.glsl?raw';
-import pointsFragmentShader from '../shaders/earthPoints/fragment.glsl?raw';
-import glowVertexShader from '../shaders/earthGlow/vertex.glsl?raw';
-import glowFragmentShader from '../shaders/earthGlow/fragment.glsl?raw';
-import CameraControls from '../Controls/CameraControls';
-import Animation from '../Controls/Animation';
 import GUI from 'lil-gui';
 import { gsap } from 'gsap';
 
 export default function () {
+    /** 변수 */
+
+  //** const */
+  const group = new THREE.Group()
+  const meshes = [],
+        materials = []
+  //** let */
+  let cubeCount  = 0;
+  let geometry, material
+  
+  //** param */
+  const gridCount = {
+    x:10,
+    y:20
+  }
+  const girdSize = {
+    x: 0.5,
+    y: 0.5,
+  }
+
   const renderer = new THREE.WebGLRenderer({
     alpha: true,
+    antialias : true,
   });
-  renderer.setClearColor(0x000000, 1);
+  renderer.setClearColor(0x0a1245, 1);
 
   const container = document.querySelector('#container');
-
   container.appendChild(renderer.domElement);
 
   const canvasSize = {
@@ -27,8 +38,6 @@ export default function () {
     height: window.innerHeight,
   };
 
-  const clock = new THREE.Clock();
-  const textureLoader = new THREE.TextureLoader();
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -37,161 +46,81 @@ export default function () {
     100
   );
 
-  /** BackGround 
-  const cubeTextureLoader = new THREE.CubeTextureLoader();
-  const environmentMap = cubeTextureLoader.load([
-   'assets/environment/px.png',
-   'assets/environment/nx.png',
-   'assets/environment/py.png',
-   'assets/environment/ny.png',
-   'assets/environment/pz.png',
-   'assets/environment/nz.png'
-  ])
-  environmentMap.encoding = THREE.sRGBEncoding;
-  scene.background = environmentMap;
-  scene.environment = environmentMap;
-*/
-
   /** library */
-  //const gui = new GUI();
-  
-  /** animation */
-  let introStart = true;
-  const animation = new Animation(introStart,gsap);
-  
-  //introStart = animation.animationIntro();
-  
+  /** texture */
+  const loader = new THREE.TextureLoader()
+  const texture = loader.load('./public/assets/img1.jpg')
 
+
+  /** light */
+  const light = new THREE.DirectionalLight( 0xffffff, 7 );
+  light.position.set( 0.5, 1, 1 ).normalize();
+  scene.add( light );
 
   /** Camera */
-  //camera.position.set(0, 0, 1.9);
-  camera.position.set(0, 0, 0.85);
+  camera.position.set(0, 0, 7);
+
 
   /** Controls */
-  const cameraControls = new CameraControls();
   const orbitControls = () => {
     const controls = new OrbitControls(camera, renderer.domElement);
-
     return controls;
   }
   
-  /** create Earth */
-  const createEarth = () => {
-    const material = new THREE.ShaderMaterial({
-      wireframe: false,
-      uniforms: {
-        uTexture: {
-          value: textureLoader.load('assets/earth-specular-map.png'),
-        },
-      },
-      vertexShader: vertexShader,
-      fragmentShader: fragmentShader,
-      side: THREE.DoubleSide,
-      transparent: true,
-    });
 
-    const geometry = new THREE.SphereGeometry(0.8, 30, 30);
-    const mesh = new THREE.Mesh(geometry, material);
-
-    return mesh;
-  };
-
-  /** create EarthPointe*/
-  const createEarthPoints = () => {
-    const material = new THREE.ShaderMaterial({
-      wireframe: true,
-      uniforms: {
-        uTexture: {
-          value: textureLoader.load('assets/earth-specular-map.png'),
-        },
-        uTime: {
-          value: 0,
-        },
-      },
-      vertexShader: pointsVertexShader,
-      fragmentShader: pointsFragmentShader,
-      side: THREE.DoubleSide,
-      transparent: true,
-      depthWrite: false,
-      depthTest: false,
-      blending: THREE.AdditiveBlending,
-    });
-
-    const geometry = new THREE.IcosahedronGeometry(0.8, 30, 30);
-    geometry.rotateY(-Math.PI);
-
-    const mesh = new THREE.Points(geometry, material);
-
-    return mesh;
-  };
-
-  
-  /** create EarthGlow */
-  const createEarthGlow = () => {
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        uZoom: {
-          value: 1,
-        },
-      },
-      vertexShader: glowVertexShader,
-      fragmentShader: glowFragmentShader,
-      side: THREE.BackSide,
-      transparent: true,
-    });
-
-    const geometry = new THREE.SphereGeometry(1, 40, 40);
-    const mesh = new THREE.Mesh(geometry, material);
-
-    return mesh;
-  };
-
-  /** create Galaxis */
-  const createGalaxis = () => {
-    const count  = 10000;
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++){
-      positions[i] = (Math.random() - 0.5) * 4;
-      positions[i + 1] = (Math.random() - 0.5) * 4;
-      positions[i + 2] = (Math.random() - 0.5) * 4; 
-    }
-    const starsGeometric = new THREE.BufferGeometry();
-    starsGeometric.setAttribute(
-      'position',
-      new THREE.BufferAttribute(positions, 3)
-    )
-    const starsMaterial = new THREE.PointsMaterial({
-      size : Math.random() * 0.007,
-      transparent : true,
-      depthWrite : false,
-      color: '#3f9f8e',
-      alphaMap : textureLoader.load('assets/particle.png'),
-      map: textureLoader.load('assets/particle.png'),
-    })
-    const star = new THREE.Points(starsGeometric, starsMaterial);
-
-    return star
-  }  
 
 
   /** create */
   const create = () => {
-    const earth = createEarth();
-    const earthPoints = createEarthPoints();
-    const earthGlow = createEarthGlow();
-    const stars = createGalaxis()
-    // const glowNormalHelper = new VertexNormalsHelper(earthGlow, 0.1);
+    //create mesh
+    const ux = 1/ gridCount.x
+    const uy = 1/ gridCount.y
+    
+    for(let i  = 0 ; i < gridCount.y ; i++) {
+      for(let j = 0 ; j < gridCount.x ; j++){
+        geometry = new THREE.BoxGeometry(girdSize.x,girdSize.y)  ;
+        change_uvs(geometry, ux, uy,j,i)  //geometry buffer
 
-    scene.add(earth, earthPoints, earthGlow, stars);
+        materials[cubeCount] = new THREE.MeshPhongMaterial({
+          color: 'white',
+          map : texture
+        });//material 생성
+        material = materials[cubeCount]// 메트리얼 할당
 
-    return {
-      earth,
-      earthPoints,
-      earthGlow,
-      stars
-    };
-  };
+        const mesh = new THREE.Mesh(
+          geometry,
+          material
+        )//매쉬 생성
 
+        let x = j * girdSize.x - ((gridCount.x * girdSize.x) / 2) + girdSize.x/2 + 0.1*j
+        let y = i * girdSize.y - ((gridCount.y * girdSize.y) / 2) + girdSize.y/2 + 0.1*i
+        mesh.position.set(x, y, 0);
+        mesh.scale.x = mesh.scale.y = mesh.scale.z = 1;
+        
+        group.add(mesh)
+        cubeCount++;
+      }///inner for end
+    }//out for end
+    scene.add(group);
+  }//create end
+
+  /**
+   *  uv mapping
+   */
+  const change_uvs = (geo, unitx, unity, offsetx, offsety) => {
+    const uvs = geo.attributes.uv.array;
+    for(let i = 0; i < uvs.length; i += 2){
+      uvs[i] = (uvs[i] + offsetx) * unitx
+      uvs[i + 1] = (uvs[i + 1] + offsety) * unity
+    }
+  }
+
+
+
+
+
+
+  //resize
   const resize = () => {
     canvasSize.width = window.innerWidth;
     canvasSize.height = window.innerHeight;
@@ -203,52 +132,18 @@ export default function () {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   };
 
-  let lastScrollY = 0;
-  let entered = false;
+  //addEvent
   const addEvent = () => {
     window.addEventListener('resize', resize);
-    window.addEventListener("scroll", () => {
-      lastScrollY = animation.scrollAnimation(window.scrollY,lastScrollY);
-      animation.enterToContent(camera);
-    });
-    window.addEventListener('mousedown', (e) => {
-      console.log('d '+e.clientX)
-      console.log('d ' +e.clientY)
-    })
-    window.addEventListener('mouseup', (e) => {
-      console.log('u '+e.clientX)
-      console.log('u '+e.clientY)
-    })
-  
   };
-  
 
-
-  const draw = (obj, orbitControl) => {
-    const { earth, earthPoints, earthGlow, stars} = obj;
-    // earth.rotation.x += 0.0005;
-    earth.rotation.y += 0.0005;
-    earth.rotation.x = 0.3;
-    // earthPoints.rotation.x += 0.0005;
-    earthPoints.rotation.y += 0.0005;
-    earthPoints.rotation.x = 0.3;
-    // stars.rotation.x += 0.0007;
-     stars.rotation.y += 0.0007;
-
-
-
-
+  //draw
+  const draw = ( orbitControl) => {
     orbitControl.update();
     renderer.render(scene, camera);
-    // console.log(orbitControl.getDistance)
-    earthGlow.material.uniforms.uZoom.value = orbitControl.target.distanceTo(
-      orbitControl.object.position
-    );
-
-    earthPoints.material.uniforms.uTime.value = clock.getElapsedTime();
 
     requestAnimationFrame(() => {
-      draw(obj, orbitControl);
+      draw(orbitControl);
     });
   };
 
@@ -256,11 +151,11 @@ export default function () {
 
 
   const initialize = () => {
-    const obj = create();
+    create();
     const orbitControl = orbitControls()
     addEvent();
     resize();
-    draw(obj, orbitControl);
+    draw(orbitControl);
   };
 
   initialize();
